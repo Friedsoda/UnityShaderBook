@@ -1,53 +1,149 @@
-﻿Shader "UnityShaderBook/Chapter9/ForwardRendering"
+﻿// Upgrade NOTE: replaced '_LightMatrix0' with 'unity_WorldToLight'
+
+Shader "UnityShaderBook/Chapter9/ForwardRendering"
 {
     Properties
     {
-        _Color ("Color", Color) = (1,1,1,1)
-        _MainTex ("Albedo (RGB)", 2D) = "white" {}
-        _Glossiness ("Smoothness", Range(0,1)) = 0.5
-        _Metallic ("Metallic", Range(0,1)) = 0.0
+        _Diffuse ("Diffuse", Color) = (1,1,1,1)
+        _Specular ("Specular", Color) = (1,1,1,1)
+        _Gloss ("Gloss", Range(8.0, 256)) = 20
+
     }
     SubShader
     {
         Tags { "RenderType"="Opaque" }
-        LOD 200
 
-        CGPROGRAM
-        // Physically based Standard lighting model, and enable shadows on all light types
-        #pragma surface surf Standard fullforwardshadows
+        Pass {
+            Tags { "LightMode"="ForwardBase" }
 
-        // Use shader model 3.0 target, to get nicer looking lighting
-        #pragma target 3.0
+            CGPROGRAM
+            
+            #pragma multi_compile_fwdbase
 
-        sampler2D _MainTex;
+            #pragma vertex vert
+            #pragma fragment frag
 
-        struct Input
-        {
-            float2 uv_MainTex;
-        };
+            #include "Lighting.cginc"
 
-        half _Glossiness;
-        half _Metallic;
-        fixed4 _Color;
+            fixed4 _Diffuse;
+            fixed4 _Specular;
+            float _Gloss;
 
-        // Add instancing support for this shader. You need to check 'Enable Instancing' on materials that use the shader.
-        // See https://docs.unity3d.com/Manual/GPUInstancing.html for more information about instancing.
-        // #pragma instancing_options assumeuniformscaling
-        UNITY_INSTANCING_BUFFER_START(Props)
-            // put more per-instance properties here
-        UNITY_INSTANCING_BUFFER_END(Props)
+            struct a2v {
+                float4 vertex : POSITION;
+                float3 normal : NORMAL;
+            };
 
-        void surf (Input IN, inout SurfaceOutputStandard o)
-        {
-            // Albedo comes from a texture tinted by color
-            fixed4 c = tex2D (_MainTex, IN.uv_MainTex) * _Color;
-            o.Albedo = c.rgb;
-            // Metallic and smoothness come from slider variables
-            o.Metallic = _Metallic;
-            o.Smoothness = _Glossiness;
-            o.Alpha = c.a;
+            struct v2f {
+                float4 pos : SV_POSITION;
+                float3 worldNormal : TEXCOORD0;
+                float3 worldPos : TEXCOORD1; 
+            };
+
+            v2f vert(a2v v) {
+                v2f o;
+                o.pos = UnityObjectToClipPos(v.vertex);
+
+                o.worldNormal = UnityObjectToWorldNormal(v.normal);
+                o.worldPos = mul(unity_ObjectToWorld, v.vertex).xyz; 
+
+                return o;
+            }
+
+            fixed4 frag(v2f i) : SV_Target {
+                fixed3 worldNormal = normalize(i.worldNormal);
+                fixed3 worldLightDir = normalize(_WorldSpaceLightPos0.xyz);
+
+                fixed3 ambient = UNITY_LIGHTMODEL_AMBIENT.xyz;
+
+                fixed3 diffuse = _LightColor0.rgb * _Diffuse.rgb * saturate(dot(worldNormal, worldLightDir));
+
+                fixed3 viewDir = normalize(_WorldSpaceCameraPos.xyz - i.worldPos.xyz);
+                fixed3 halfDir = normalize(worldLightDir + viewDir);
+                fixed3 specular = _LightColor0.rgb * _Specular.rgb * pow(max(0, dot(worldNormal, halfDir)), _Gloss);
+
+                // The attenuation of directional light is always 1
+                fixed atten = 1.0;
+
+                return fixed4(ambient + (diffuse + specular) * atten, 1.0);
+            }
+
+            ENDCG
         }
-        ENDCG
+
+        Pass {
+            Tags { "LightMode"="ForwardAdd" }
+
+            Blend One One
+
+            CGPROGRAM
+            
+            #pragma multi_compile_fwdbase
+
+            #pragma vertex vert
+            #pragma fragment frag
+
+            #include "Lighting.cginc"
+            #include "AutoLight.cginc"
+
+            fixed4 _Diffuse;
+            fixed4 _Specular;
+            float _Gloss;
+
+            struct a2v {
+                float4 vertex : POSITION;
+                float3 normal : NORMAL;
+            };
+
+            struct v2f {
+                float4 pos : SV_POSITION;
+                float3 worldNormal : TEXCOORD0;
+                float3 worldPos : TEXCOORD1; 
+            };
+
+            v2f vert(a2v v) {
+                v2f o;
+                o.pos = UnityObjectToClipPos(v.vertex);
+
+                o.worldNormal = UnityObjectToWorldNormal(v.normal);
+                o.worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
+
+                return o;
+            }
+
+            fixed4 frag(v2f i) : SV_Target {
+                fixed3 worldNormal = normalize(i.worldNormal);
+                #ifdef USING_DIRECTIONAL_LIGHT
+                    fixed3 worldLightDir = normalize(_WorldSpaceLightPos0.xyz);
+                #else
+                    fixed3 worldLightDir = normalize(_WorldSpaceLightPos0.xyz - i.worldPos.xyz);
+                #endif
+
+                fixed3 diffuse = _LightColor0.rgb * _Diffuse.rgb * saturate(dot(worldNormal, worldLightDir));
+
+                fixed3 viewDir = normalize(_WorldSpaceCameraPos.xyz - i.worldPos.xyz);
+                fixed3 halfDir = normalize(worldLightDir + viewDir);
+                fixed3 specular = _LightColor0.rgb * _Specular.rgb * pow(max(0, dot(worldNormal, halfDir)), _Gloss);
+
+                #ifdef USING_DIRECTIONAL_LIGHT
+                    fixed atten = 1.0;
+                #else
+                    #if defined (POINT)
+                        float3 lightCoord = mul(unity_WorldToLight, float4(i.worldPos, 1)).xyz;
+                        fixed atten = tex2D(_LightTexture0, dot(lightCoord, lightCoord).rr).UNITY_ATTEN_CHANNEL;
+                    #elif defined (SPOT)
+                        float4 lightCoord = mul(unity_WorldToLight, float4(i.worldPos, 1));
+                        fixed atten = (lightCoord.z > 0) * tex2D(_LightTexture0, lightCoord.xy / lightCoord.w + 0.5).w * tex2D(_LightTextureB0, dot(lightCoord, lightCoord).rr).UNITY_ATTEN_CHANNEL;
+                    #else
+                        fixed atten = 1.0;
+                    #endif
+                #endif
+
+                return fixed4((diffuse + specular) * atten, 1.0);
+            }
+
+            ENDCG
+        }
     }
     FallBack "Diffuse"
 }
