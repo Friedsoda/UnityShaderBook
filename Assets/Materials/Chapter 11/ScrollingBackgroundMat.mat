@@ -8,7 +8,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: ScrollingBackgroundMat
-  m_Shader: {fileID: 4800000, guid: bf56c5886b63140adb78eb1dc469d56a, type: 3}
+  m_Shader: {fileID: 4800000, guid: 9e8fc49c1aefd433b94dd2473826888a, type: 3}
   m_ShaderKeywords: 
   m_LightmapFlags: 5
   m_EnableInstancingVariants: 0
@@ -71,9 +71,9 @@ Material:
     - _Multiplier: 1
     - _OcclusionStrength: 1
     - _Parallax: 0.02
-    - _Scroll2X: 0.05
+    - _Scroll2X: 0.07
     - _Scroll2Y: 0
-    - _ScrollX: 0.07
+    - _ScrollX: 0.1
     - _ScrollY: 0
     - _SrcBlend: 1
     - _UVSec: 0
