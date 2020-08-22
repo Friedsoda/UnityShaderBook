@@ -8,7 +8,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: ImageSequenceAnimationMat
-  m_Shader: {fileID: 4800000, guid: 58893d9d91d9c4d27b866bc7de26e8d8, type: 3}
+  m_Shader: {fileID: 4800000, guid: d85a7d9c185cf4f868c0da2371627d17, type: 3}
   m_ShaderKeywords: 
   m_LightmapFlags: 5
   m_EnableInstancingVariants: 0
@@ -78,7 +78,7 @@ Material:
     - _ScrollY: 0
     - _SizeX: 8
     - _SizeY: 8
-    - _Speed: 40
+    - _Speed: 34
     - _SrcBlend: 1
     - _UVSec: 0
     - _VerticalAmount: 8

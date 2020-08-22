@@ -7,13 +7,10 @@
 		_Distortion ("Distortion", Range(0, 100)) = 10
 		_RefractAmount ("Refract Amount", Range(0.0, 1.0)) = 1.0
 	}
-	
+
 	SubShader {
-		// We must be transparent, so other objects are drawn before this one.
 		Tags { "Queue"="Transparent" "RenderType"="Opaque" }
 		
-		// This pass grabs the screen behind the object into a texture.
-		// We can access the result in the next pass as _RefractionTex
 		GrabPass { "_RefractionTex" }
 		
 		Pass {		
